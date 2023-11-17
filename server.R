@@ -19,9 +19,15 @@ if(is_inst("reactlog")){
 sf::sf_use_s2(FALSE)
 
 #Assign reactive value that will be used throughout
-# reactive_values <- 
-#   reactiveValues(
-#   )
+reactive_values <-
+  reactiveValues(
+    #List of places that have been added to the LQ plot
+    #Starts with Greater Manchester but can be added to and removed
+    LQ_places = NULL#Default set in UI default text box option
+    
+  )
+
+
 
 
 
@@ -29,6 +35,9 @@ sf::sf_use_s2(FALSE)
 
 function(input, output, session) {
   
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #COMMON LEFTHAND FUNCTIONS----
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
   ## reactive to update area chosen 
   ## This will set the TTWA first, from what the default in the input$area_chosen is
@@ -55,9 +64,6 @@ function(input, output, session) {
   )
   
   
-  
-  
-  
   observeEvent(input$postcode_chosen,{
     
     data_chosen <- 
@@ -79,6 +85,71 @@ function(input, output, session) {
                        selected = '',
                        server = T)
   
+  
+  
+  #~~~~~~~~~~~~~~~~~~~~~
+  #TAB FUNCTIONALITY----
+  #~~~~~~~~~~~~~~~~~~~~~
+  
+  #Tab 2 LQ plot - detect extra geographyy input, add to LQ place list
+  observeEvent(input$LQplot_newselection,{
+    
+    #check not null (need to set to null if empty)
+    if(is.null(reactive_values$LQ_places)){
+     
+      reactive_values$LQ_places = input$LQplot_newselection
+      
+    }
+    #Check haven't already added, and keep to 7 extra. That's probably too many to be legible, so plenty.
+    else if(!input$LQplot_newselection %in% c(reactive_values$LQ_places,isolate(input$area_chosen)) & length(reactive_values$LQ_places < 7)){
+    
+      reactive_values$LQ_places = c(reactive_values$LQ_places, input$LQplot_newselection)
+    
+    }
+    
+  })
+  
+  
+  
+  #Remove elements from the LQ plot extra places
+  observeEvent(input$removeBtn,{
+    
+    if(length(reactive_values$LQ_places) > 1){
+      
+      reactive_values$LQ_places <- reactive_values$LQ_places[1:length(reactive_values$LQ_places)-1]
+      
+    } else if(length(reactive_values$LQ_places) == 1){
+      
+      reactive_values$LQ_places <- NULL
+      
+    }
+    
+  })
+  
+  
+  
+  
+  #~~~~~~~~~~~~~~~~~~~~~~~~~
+  #TAB PLOTS AND CONTENT----
+  #~~~~~~~~~~~~~~~~~~~~~~~~~
+  
+  #Text of added places for LQ plot tab 2
+  output$list_of_places_LQplot <- renderText({
+    
+    #Add in marker descriptions
+    if(length(reactive_values$LQ_places)>0){
+    places_w_markers <- paste0(reactive_values$LQ_places, shapeorder_forLQplot.names[1:length(reactive_values$LQ_places)])
+    } else {
+      places_w_markers <- ''
+    }
+    
+    paste0(
+      "Other places added to the LQ plot: ",
+       # paste0(reactive_values$LQ_places, collapse = ", ")
+       paste0(places_w_markers, collapse = ", ")
+    )
+    
+  })
   
   
   #LQ plot for tab 2
@@ -109,9 +180,27 @@ function(input, output, session) {
       SIC07_description %in% lq.selection$SIC07_description
     )
     
-    p <- LQ_baseplot(df = yeartoplot, alpha = 0.1, sector_name = SIC07_description, 
+    
+    
+    
+    #INITIALISE LQ PLOT
+    p <- LQ_baseplot(df = yeartoplot, alpha = 0, sector_name = SIC07_description, 
                      LQ_column = LQ, change_over_time = slope)
     
+    #Add any other places, up to some maximum number
+    #Use integers so we can also add in set shapes for each additional place
+    if(length(reactive_values$LQ_places) > 0){
+      for(i in 1:length(reactive_values$LQ_places)){
+        
+        p <- addplacename_to_LQplot(df = yeartoplot, plot_to_addto = p, 
+                                    placename = reactive_values$LQ_places[i], shapenumber = shapeorder_forLQplot[i],
+                                    region_name = ITL_region_name,#The next four, the function needs them all 
+                                    sector_name = SIC07_description, change_over_time = slope, LQ_column = LQ)
+        
+      }
+    }
+      
+    #MAIN GEOGRAPHY LAST, TO APPEAR ON TOP
     p <- addplacename_to_LQplot(df = yeartoplot, placename = input$area_chosen,
                                 plot_to_addto = p, shapenumber = 16,
                                 min_LQ_all_time = min_LQ_all_time, max_LQ_all_time = max_LQ_all_time,#Range bars won't appear if either of these not included
@@ -124,57 +213,68 @@ function(input, output, session) {
     
     p
     
-  }, height = 600, res = 100)
+  }, height = 800, res = 100)
   
   
   
   
-  #LQ plot for tab 3, testing plotly
-  output$LQ_plotly <- renderPlotly({
+  
+  
+  #OUTPUT FOR SICSOC PLOT
+  output$sicsoc_plot <- renderPlot({
+     
+    # debugonce(get_all_places_sicsocs)
     
-    #Get a vector with sectors ordered by the place's LQs, descending order
-    #Use this next to factor-order the SIC sectors
-    sectorLQorder <- itl2.cp %>% filter(
-      ITL_region_name == input$area_chosen,
-      year == 2021
-    ) %>% 
-      arrange(-LQ) %>% 
-      select(SIC07_description) %>% 
-      pull()
+    allz <- purrr::map(
+      .f = get_all_places_sicsocs, 
+      .x = unique(sicsoc$GEOGRAPHY_NAME[sicsoc$GEOGRAPHY_NAME!=input$area_chosen]),
+      comparator_name = input$area_chosen
+    ) %>% bind_rows
     
-    #Turn the sector column into a factor and order by LCR's LQs
-    yeartoplot$SIC07_description <- factor(yeartoplot$SIC07_description, levels = sectorLQorder, ordered = T)
     
-    # Reduce to SY LQ 1+
-    lq.selection <- yeartoplot %>% filter(
-      ITL_region_name == input$area_chosen,
-      # slope > 1,#LQ grew relatively over time
-      LQ > 1
+    allz <- allz %>% 
+      unite(sicsoc, c('SOC2020','SIC2007'), sep = ' || ', remove = F) %>% 
+      mutate(
+        valdiff = ifelse(!CIs_overlap, valdiff, NA)
+      ) 
+    
+    
+    #Finding the zero breakpoint to adjust the legend/scale
+    valz <- c(range(allz$valdiff[allz$SIC2007!='Total Services'], na.rm = T), 0)
+    scale_values <- function(x){(x-min(x))/(max(x)-min(x))}
+    scaled <- scale_values(valz)
+    zerocutoff <- scaled[3]
+    
+    #Colours to separate the different SOCs on the y axis
+    b <- c(
+      rep('#FF5733',9),
+      rep('#CDDC39',9),
+      rep('#00BCD4',9),
+      rep('#9C27B0',9),
+      rep('#3F51B5',9),
+      rep('#E91E63',9),
+      rep('#009688',9),
+      rep('#FFEB3B',9),
+      rep('#607D8B',9)
     )
     
-    #Keep only sectors that were LQ > 1 from the main plotting df
-    yeartoplot <- yeartoplot %>% filter(
-      SIC07_description %in% lq.selection$SIC07_description
-    )
-    
-    p <- LQ_baseplot(df = yeartoplot, alpha = 0.1, sector_name = SIC07_description, 
-                     LQ_column = LQ, change_over_time = slope)
-    
-    p <- addplacename_to_LQplot(df = yeartoplot, placename = input$area_chosen,
-                                plot_to_addto = p, shapenumber = 16,
-                                min_LQ_all_time = min_LQ_all_time, max_LQ_all_time = max_LQ_all_time,#Range bars won't appear if either of these not included
-                                value_column = value, sector_regional_proportion = sector_regional_proportion,#Sector size numbers won't appear if either of these not included
-                                region_name = ITL_region_name,#The next four, the function needs them all 
-                                sector_name = SIC07_description,
-                                change_over_time = slope, 
-                                LQ_column = LQ 
-    )
-    
-    p
-    
-  })
-  
-  
+    ggplot(allz %>% filter(SIC2007!='Total Services'), aes(x = substr(GEOGRAPHY_NAME,0,20), y = sicsoc, fill= valdiff)) + 
+      geom_tile() +
+      scale_fill_gradientn(
+        name = "ppt diff",
+        colours = c("red", "white", "darkgreen"),
+        values = c(0, zerocutoff, 1)#https://stackoverflow.com/a/58725778/5023561
+      ) +
+      theme(axis.text.x = element_text(angle = 270, vjust = 0.5, hjust=0)) +
+      ggtitle(input$area_chosen) +
+      theme(
+        plot.title = element_text(face = 'bold'),
+        axis.text.y = element_text(colour = b)
+      ) +
+      xlab("") +
+      ylab("") 
+      
+  }, height = 1000, res = 100)
   
   
   

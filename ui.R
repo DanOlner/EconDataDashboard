@@ -13,7 +13,12 @@ postcode_searcher_panel <-
     )
   }
 
-summary_input_panel <-
+
+#Main geography (ITL2 or 3) chooser, for all tabs
+#Also, input$area_chosen is the main place this gets set by other things
+#e.g. if changed by postcode search or map click, it gets updated into input$area_chosen
+#Which will then let other things react via that update
+choose_main_geography <-
   function(){
     selectInput(
       inputId = 'area_chosen',
@@ -23,6 +28,21 @@ summary_input_panel <-
       selectize = T
     )
   }
+
+
+LQplot_choose_extra_geographies <-
+  function(){
+    selectInput(
+      inputId = 'LQplot_newselection',
+      label = 'To add another place to the LQ plot, select here (max. 7) or click "remove" to take off the last one added.',
+      choices = area_options,
+     selected = 'Greater Manchester',
+      selectize = T
+    )
+  }
+
+
+
 
 
 # Panel layouts -----------------------------------------------------------
@@ -60,12 +80,18 @@ about_tab_panel <-
 
 fluidPage(
   
+  #List themes with: bootswatch_themes(4)
+  #View here: https://bootswatch.com/
+  # theme = bs_theme(version = 4, bootswatch = "united"),
+  theme = bs_theme(version = 4, bootswatch = "minty"),
+  # theme = bs_theme(version = 4, bootswatch = "cerulean"),
+  
   titlePanel("UK regional economic data generic viewer thingy"),
   
   sidebarLayout(
     sidebarPanel(
       # Place common sidebar elements here
-      summary_input_panel()
+      choose_main_geography()
       # postcode_searcher_panel(),
       # actionButton("action", "Action Button"),
       # sliderInput("slider", "Slider Input", 1, 100, 50),
@@ -74,19 +100,31 @@ fluidPage(
     
     mainPanel(
       tabsetPanel(
+        
+        #TAB 1 ABOUT PAGE
         tabPanel("About", 
                  about_tab_panel('About')
                  ),
+        
+        #TAB 2 LQ PLOT
         tabPanel(
-          "Tab 2", 
-          textOutput("text2"),
+          "LQ plot", 
+          
+          LQplot_choose_extra_geographies(),
+          # actionButton("addBtn", "Add Name"),
+          actionButton("removeBtn", "Remove Last Name"),
+          
+          textOutput("list_of_places_LQplot"),
+          
           plotOutput(outputId = "LQ_plot")
           ),
+        
+        #TAB 3 SIC VS SOC EVERYWHERE COMPARISON
         tabPanel(
-          "Tab 3", 
-          textOutput("text3"),
-          plotlyOutput(outputId = "LQ_plotly", height = '600px')
-          )
+          "SICSOC",
+          plotOutput(outputId = "sicsoc_plot")
+        )
+        
         # Add more tabs as needed
       )
     )

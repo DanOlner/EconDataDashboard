@@ -337,4 +337,51 @@ twod_proportionplot <- function(df, regionvar, category_var, valuevar, timevar, 
 
 
 
-
+#SIC v SOC data, get all places compared to one comparator, show where 95% CIs don't overlap
+get_all_places_sicsocs <- function(geography_name,comparator_name){
+  
+  sy <- sicsoc %>% filter(GEOGRAPHY_NAME %in% c(comparator_name,geography_name))  
+  
+  sy.w <- sy %>% 
+    select(-OBS_VALUE) %>% 
+    pivot_wider(values_from = OBS_VALUE_REGIONALPERCENT, names_from = MEASURES_NAME) %>% 
+    mutate(
+      min_ci = Value - Confidence,
+      max_ci = Value + Confidence
+    )
+  
+  #Mark pairs where CIs do not overlap
+  #Rather than messing around with figuring out lags
+  #make a wider version and do differences there
+  
+  #https://stackoverflow.com/a/3269471
+  #If (StartA <= EndB) and (EndA >= StartB) 
+  sy.ww <- sy.w %>%
+    select(GEOGRAPHY_NAME,SIC2007,SOC2020,min_ci,max_ci) %>% 
+    pivot_wider(
+      names_from = GEOGRAPHY_NAME, values_from = c(min_ci,max_ci),
+      values_fn = mean
+    ) %>% 
+    mutate(CIs_overlap = ifelse(
+      (.[,3] <= .[,6] & .[,5] <= .[,4]) |
+        (.[,4] <= .[,5] & .[,6] <= .[,3])  , 
+      F,T))
+  
+  
+  #Merge those back in
+  #Applies to both places so can merge in on these
+  
+  #Find difference between actual value, then display if sig (which won't show effect size properly, but...)
+  sy.w %>% 
+    left_join(
+      sy.ww,
+      by = c('SIC2007','SOC2020')
+    ) %>% 
+    group_by(SIC2007,SOC2020) %>% 
+    mutate(
+      valdiff = lag(Value) - Value
+    ) %>% 
+    filter(GEOGRAPHY_NAME == geography_name) %>% 
+    select(GEOGRAPHY_NAME,SOC2020,SIC2007,CIs_overlap,valdiff)
+  
+}

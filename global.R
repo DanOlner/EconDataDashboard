@@ -12,8 +12,6 @@ library(zoo)#For moving average function
 library(ggrepel)#For self-adjusting plot labels
 options(scipen = 99)#Avoids scientific notation
 
-itl2.cp <- read_csv('data/ITL2currentprices_long.csv')
-
 source('functions/misc_functions.R')
 
 #PRE-PROCESS DATA FOR SPEED OF LOADING----
@@ -70,29 +68,42 @@ source('functions/misc_functions.R')
 # saveRDS(yeartoplot,'data/itl2_2021forLQplot.rds')
 
 
-#LOAD
+#LOAD DATA----
 itl2.cp <- readRDS('data/itl2currentprices_w_LQs.rds')
 yeartoplot <- readRDS('data/itl2_2021forLQplot.rds')
 
+#Sic-soc data
+sicsoc <- readRDS('data/sicsoc.rds')
 
 
-
-
-#LOAD OTHER NECESSARY DATA----
+#LOAD OTHER NECESSARY OBJECTS----
 
 
 #Setting initial geography, can change to e.g. ITL3 later
 geography <- itl2.cp
 
 ## postcode lookup 
-postcode_lookup <- readRDS('data/postcode lookup table.rds')
-
-postcode_options <- postcode_lookup$pcd_area
-
+# postcode_lookup <- readRDS('data/postcode lookup table.rds')
+# postcode_options <- postcode_lookup$pcd_area
 
 
 
+#CREATE OTHER VARIABLES----
 
+#Define shapes, each used in order when extra place added to LQ plot
+#Seven should be enough
+#cf. https://www.datanovia.com/en/wp-content/uploads/dn-tutorials/ggplot2/figures/030-ggplot-point-shapes-r-pch-list-showing-different-point-shapes-in-rstudio-1.png
+shapeorder_forLQplot <- c(23,22,24,25,13,8,4)
 
+#For explaining... 
+shapeorder_forLQplot.names <- c(
+  ' (diamonds)',
+  ' (squares)',
+  ' (up arrows)',
+  ' (down arrows)',
+  ' (cross in circles)',
+  ' (stars)',
+  ' (xs)'
+)
 
 
