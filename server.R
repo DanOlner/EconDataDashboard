@@ -79,5 +79,116 @@ function(input, output, session) {
                        selected = '',
                        server = T)
   
+  
+  
+  #LQ plot for tab 2
+  output$LQ_plot <- renderPlot({
+    
+    #Get a vector with sectors ordered by the place's LQs, descending order
+    #Use this next to factor-order the SIC sectors
+    sectorLQorder <- itl2.cp %>% filter(
+      ITL_region_name == input$area_chosen,
+      year == 2021
+    ) %>% 
+      arrange(-LQ) %>% 
+      select(SIC07_description) %>% 
+      pull()
+    
+    #Turn the sector column into a factor and order by LCR's LQs
+    yeartoplot$SIC07_description <- factor(yeartoplot$SIC07_description, levels = sectorLQorder, ordered = T)
+    
+    # Reduce to SY LQ 1+
+    lq.selection <- yeartoplot %>% filter(
+      ITL_region_name == input$area_chosen,
+      # slope > 1,#LQ grew relatively over time
+      LQ > 1
+    )
+    
+    #Keep only sectors that were LQ > 1 from the main plotting df
+    yeartoplot <- yeartoplot %>% filter(
+      SIC07_description %in% lq.selection$SIC07_description
+    )
+    
+    p <- LQ_baseplot(df = yeartoplot, alpha = 0.1, sector_name = SIC07_description, 
+                     LQ_column = LQ, change_over_time = slope)
+    
+    p <- addplacename_to_LQplot(df = yeartoplot, placename = input$area_chosen,
+                                plot_to_addto = p, shapenumber = 16,
+                                min_LQ_all_time = min_LQ_all_time, max_LQ_all_time = max_LQ_all_time,#Range bars won't appear if either of these not included
+                                value_column = value, sector_regional_proportion = sector_regional_proportion,#Sector size numbers won't appear if either of these not included
+                                region_name = ITL_region_name,#The next four, the function needs them all 
+                                sector_name = SIC07_description,
+                                change_over_time = slope, 
+                                LQ_column = LQ 
+    )
+    
+    p
+    
+  }, height = 600, res = 100)
+  
+  
+  
+  
+  #LQ plot for tab 3, testing plotly
+  output$LQ_plotly <- renderPlotly({
+    
+    #Get a vector with sectors ordered by the place's LQs, descending order
+    #Use this next to factor-order the SIC sectors
+    sectorLQorder <- itl2.cp %>% filter(
+      ITL_region_name == input$area_chosen,
+      year == 2021
+    ) %>% 
+      arrange(-LQ) %>% 
+      select(SIC07_description) %>% 
+      pull()
+    
+    #Turn the sector column into a factor and order by LCR's LQs
+    yeartoplot$SIC07_description <- factor(yeartoplot$SIC07_description, levels = sectorLQorder, ordered = T)
+    
+    # Reduce to SY LQ 1+
+    lq.selection <- yeartoplot %>% filter(
+      ITL_region_name == input$area_chosen,
+      # slope > 1,#LQ grew relatively over time
+      LQ > 1
+    )
+    
+    #Keep only sectors that were LQ > 1 from the main plotting df
+    yeartoplot <- yeartoplot %>% filter(
+      SIC07_description %in% lq.selection$SIC07_description
+    )
+    
+    p <- LQ_baseplot(df = yeartoplot, alpha = 0.1, sector_name = SIC07_description, 
+                     LQ_column = LQ, change_over_time = slope)
+    
+    p <- addplacename_to_LQplot(df = yeartoplot, placename = input$area_chosen,
+                                plot_to_addto = p, shapenumber = 16,
+                                min_LQ_all_time = min_LQ_all_time, max_LQ_all_time = max_LQ_all_time,#Range bars won't appear if either of these not included
+                                value_column = value, sector_regional_proportion = sector_regional_proportion,#Sector size numbers won't appear if either of these not included
+                                region_name = ITL_region_name,#The next four, the function needs them all 
+                                sector_name = SIC07_description,
+                                change_over_time = slope, 
+                                LQ_column = LQ 
+    )
+    
+    p
+    
+  })
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
-}
+}#END SESSION FUNCTION

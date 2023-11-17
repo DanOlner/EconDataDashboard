@@ -77,7 +77,16 @@ fluidPage(
         tabPanel("About", 
                  about_tab_panel('About')
                  ),
-        tabPanel("Tab 2", textOutput("text2"))
+        tabPanel(
+          "Tab 2", 
+          textOutput("text2"),
+          plotOutput(outputId = "LQ_plot")
+          ),
+        tabPanel(
+          "Tab 3", 
+          textOutput("text3"),
+          plotlyOutput(outputId = "LQ_plotly", height = '600px')
+          )
         # Add more tabs as needed
       )
     )

@@ -1,6 +1,9 @@
 #Misc data processing
 library(tidyverse)
 
+
+#POSTCODE LOOKUP----
+
 #Downloaded from https://geoportal.statistics.gov.uk/datasets/9ac0331178b0435e839f62f41cc61c16/about
 #Too big, stored locally
 pcs <- read_csv('local/NSPL_MAY_2022_UK/Data/NSPL_MAY_2022_UK.csv')
@@ -16,4 +19,11 @@ unique(pcs$itl) %in% itl.lookup$LAU121CD
 
 #What are the falses? Seemingly, non existent postcodes. OK.
 pcs %>% filter(!pcs$itl %in% itl.lookup$LAU121CD) %>% View
+
+
+
+
+
+
+# DATA CHECKS----
 
