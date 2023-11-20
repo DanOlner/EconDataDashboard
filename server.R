@@ -63,28 +63,28 @@ function(input, output, session) {
     }, ignoreInit = T
   )
   
-  
-  observeEvent(input$postcode_chosen,{
-    
-    data_chosen <- 
-      (postcode_lookup %>%
-      filter(pcd_area == input$postcode_chosen)
-      )
-    
-    updateSelectInput(session, inputId = "area_chosen", selected = data_chosen$ttwa[1])
-    
-    cat('Updated place via postcode selection.\n')
-  
-    #We don't want postcode input triggering initially; text input$area_chosen is being the central place store, we don't want to overwrite with NULL  
-  }, ignoreInit = T#https://stackoverflow.com/questions/42165567/prevent-execution-of-observe-on-app-load-in-shiny
-  )
-  
-  ## Serverside postcode select 
-  updateSelectizeInput(inputId = 'postcode_chosen',
-                       choices = postcode_options,
-                       selected = '',
-                       server = T)
-  
+  #Postcode selector
+  # observeEvent(input$postcode_chosen,{
+  #   
+  #   data_chosen <- 
+  #     (postcode_lookup %>%
+  #     filter(pcd_area == input$postcode_chosen)
+  #     )
+  #   
+  #   updateSelectInput(session, inputId = "area_chosen", selected = data_chosen$ttwa[1])
+  #   
+  #   cat('Updated place via postcode selection.\n')
+  # 
+  #   #We don't want postcode input triggering initially; text input$area_chosen is being the central place store, we don't want to overwrite with NULL  
+  # }, ignoreInit = T#https://stackoverflow.com/questions/42165567/prevent-execution-of-observe-on-app-load-in-shiny
+  # )
+  # 
+  # ## Serverside postcode select 
+  # updateSelectizeInput(inputId = 'postcode_chosen',
+  #                      choices = postcode_options,
+  #                      selected = '',
+  #                      server = T)
+  # 
   
   
   #~~~~~~~~~~~~~~~~~~~~~
@@ -134,7 +134,25 @@ function(input, output, session) {
   #~~~~~~~~~~~~~~~~~~~~~~~~~
   
   #Text of added places for LQ plot tab 2
-  output$list_of_places_LQplot <- renderText({
+  # output$list_of_places_LQplot <- renderText({
+  #   
+  #   #Add in marker descriptions
+  #   if(length(reactive_values$LQ_places)>0){
+  #   places_w_markers <- paste0(reactive_values$LQ_places, shapeorder_forLQplot.names[1:length(reactive_values$LQ_places)])
+  #   } else {
+  #     places_w_markers <- ''
+  #   }
+  #   
+  #   paste0(
+  #     "Other places added to the LQ plot: ",
+  #      # paste0(reactive_values$LQ_places, collapse = ", ")
+  #      paste0(places_w_markers, collapse = ", ")
+  #   )
+  #   
+  # })
+  
+  #HTML version
+  output$list_of_places_LQplot_html <- renderUI({
     
     #Add in marker descriptions
     if(length(reactive_values$LQ_places)>0){
@@ -144,10 +162,9 @@ function(input, output, session) {
     }
     
     paste0(
-      "Other places added to the LQ plot: ",
+      "<b>Other places added to the LQ plot: ",
        # paste0(reactive_values$LQ_places, collapse = ", ")
-       paste0(places_w_markers, collapse = ", ")
-    )
+       paste0(places_w_markers, collapse = ", "), "</b>") %>% HTML
     
   })
   
@@ -179,8 +196,6 @@ function(input, output, session) {
     yeartoplot <- yeartoplot %>% filter(
       SIC07_description %in% lq.selection$SIC07_description
     )
-    
-    
     
     
     #INITIALISE LQ PLOT
@@ -225,54 +240,59 @@ function(input, output, session) {
      
     # debugonce(get_all_places_sicsocs)
     
-    allz <- purrr::map(
-      .f = get_all_places_sicsocs, 
-      .x = unique(sicsoc$GEOGRAPHY_NAME[sicsoc$GEOGRAPHY_NAME!=input$area_chosen]),
-      comparator_name = input$area_chosen
-    ) %>% bind_rows
+    withProgress(message = 'Loading SIC-SOC plot...', value = 0, {
+    
+      allz <- purrr::map(
+        .f = get_all_places_sicsocs, 
+        .x = unique(sicsoc$GEOGRAPHY_NAME[sicsoc$GEOGRAPHY_NAME!=input$area_chosen]),
+        comparator_name = input$area_chosen
+      ) %>% bind_rows
+      
+      
+      allz <- allz %>% 
+        unite(sicsoc, c('SOC2020','SIC2007'), sep = ' || ', remove = F) %>% 
+        mutate(
+          valdiff = ifelse(!CIs_overlap, valdiff, NA)
+        ) 
+      
+      
+      #Finding the zero breakpoint to adjust the legend/scale
+      valz <- c(range(allz$valdiff[allz$SIC2007!='Total Services'], na.rm = T), 0)
+      scale_values <- function(x){(x-min(x))/(max(x)-min(x))}
+      scaled <- scale_values(valz)
+      zerocutoff <- scaled[3]
+      
+      #Colours to separate the different SOCs on the y axis
+      b <- c(
+        rep('#FF5733',9),
+        rep('#CDDC39',9),
+        rep('#00BCD4',9),
+        rep('#9C27B0',9),
+        rep('#3F51B5',9),
+        rep('#E91E63',9),
+        rep('#009688',9),
+        rep('#FFEB3B',9),
+        rep('#607D8B',9)
+      )
+      
+      ggplot(allz %>% filter(SIC2007!='Total Services'), aes(x = substr(GEOGRAPHY_NAME,0,20), y = sicsoc, fill= valdiff)) + 
+        geom_tile() +
+        scale_fill_gradientn(
+          name = "ppt diff",
+          colours = c("red", "white", "darkgreen"),
+          values = c(0, zerocutoff, 1)#https://stackoverflow.com/a/58725778/5023561
+        ) +
+        theme(axis.text.x = element_text(angle = 270, vjust = 0.5, hjust=0)) +
+        ggtitle(input$area_chosen) +
+        theme(
+          plot.title = element_text(face = 'bold'),
+          axis.text.y = element_text(colour = b)
+        ) +
+        xlab("") +
+        ylab("") 
     
     
-    allz <- allz %>% 
-      unite(sicsoc, c('SOC2020','SIC2007'), sep = ' || ', remove = F) %>% 
-      mutate(
-        valdiff = ifelse(!CIs_overlap, valdiff, NA)
-      ) 
-    
-    
-    #Finding the zero breakpoint to adjust the legend/scale
-    valz <- c(range(allz$valdiff[allz$SIC2007!='Total Services'], na.rm = T), 0)
-    scale_values <- function(x){(x-min(x))/(max(x)-min(x))}
-    scaled <- scale_values(valz)
-    zerocutoff <- scaled[3]
-    
-    #Colours to separate the different SOCs on the y axis
-    b <- c(
-      rep('#FF5733',9),
-      rep('#CDDC39',9),
-      rep('#00BCD4',9),
-      rep('#9C27B0',9),
-      rep('#3F51B5',9),
-      rep('#E91E63',9),
-      rep('#009688',9),
-      rep('#FFEB3B',9),
-      rep('#607D8B',9)
-    )
-    
-    ggplot(allz %>% filter(SIC2007!='Total Services'), aes(x = substr(GEOGRAPHY_NAME,0,20), y = sicsoc, fill= valdiff)) + 
-      geom_tile() +
-      scale_fill_gradientn(
-        name = "ppt diff",
-        colours = c("red", "white", "darkgreen"),
-        values = c(0, zerocutoff, 1)#https://stackoverflow.com/a/58725778/5023561
-      ) +
-      theme(axis.text.x = element_text(angle = 270, vjust = 0.5, hjust=0)) +
-      ggtitle(input$area_chosen) +
-      theme(
-        plot.title = element_text(face = 'bold'),
-        axis.text.y = element_text(colour = b)
-      ) +
-      xlab("") +
-      ylab("") 
+    })#end with progress
       
   }, height = 1000, res = 100)
   

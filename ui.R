@@ -79,6 +79,19 @@ about_tab_panel <-
 
 
 fluidPage(
+  tags$head(#with progress bar CSS, see https://stackoverflow.com/a/44044060/5023561
+    tags$style(
+      HTML(".shiny-notification {
+              height: 100px;
+              width: 500px;
+              position:fixed;
+              top: calc(0% + 150px);;
+              left: calc(50% - 400px);;
+            }
+           "
+      )
+    )
+  ),
   
   #List themes with: bootswatch_themes(4)
   #View here: https://bootswatch.com/
@@ -114,7 +127,9 @@ fluidPage(
           # actionButton("addBtn", "Add Name"),
           actionButton("removeBtn", "Remove Last Name"),
           
-          textOutput("list_of_places_LQplot"),
+          # textOutput("list_of_places_LQplot"),#plain text
+          
+          htmlOutput("list_of_places_LQplot_html"),#html version of same, for bold text
           
           plotOutput(outputId = "LQ_plot")
           ),

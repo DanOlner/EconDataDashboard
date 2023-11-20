@@ -1,12 +1,12 @@
 library(shiny)
 library(tidyverse)
-library(sf)
-library(leaflet)
-library(plotly)
+# library(sf)
+# library(leaflet)
+# library(plotly)
 library(bslib)
-library(knitr)
-library(toOrdinal)
-library(shinyWidgets)
+# library(knitr)
+# library(toOrdinal)
+# library(shinyWidgets)
 library(markdown)
 library(zoo)#For moving average function
 library(ggrepel)#For self-adjusting plot labels

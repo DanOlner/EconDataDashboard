@@ -27,3 +27,6 @@ pcs %>% filter(!pcs$itl %in% itl.lookup$LAU121CD) %>% View
 
 # DATA CHECKS----
 
+library(profvis)
+
+profvis::profvis(runApp())
