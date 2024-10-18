@@ -99,7 +99,7 @@ fluidPage(
   theme = bs_theme(version = 4, bootswatch = "minty"),
   # theme = bs_theme(version = 4, bootswatch = "cerulean"),
   
-  titlePanel("UK regional economic data generic viewer thingy"),
+  titlePanel("Dig into UK regional economic data"),
   
   sidebarLayout(
     sidebarPanel(
