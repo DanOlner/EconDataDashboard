@@ -87,7 +87,11 @@ fluidPage(
               position:fixed;
               top: calc(0% + 150px);;
               left: calc(50% - 400px);;
-            }
+      }
+            
+            #LQ_plot {
+    margin-bottom: 350px;  /* Adjust margin below the plot, so explanation text appears after */
+  }
            "
       )
     )
@@ -131,7 +135,16 @@ fluidPage(
           
           htmlOutput("list_of_places_LQplot_html"),#html version of same, for bold text
           
-          plotOutput(outputId = "LQ_plot")
+          plotOutput(outputId = "LQ_plot"),
+          
+          br(),  # Add a line break
+          
+          #Explanation / links for LQ plot
+          fluidRow(
+            column(width = 11, includeMarkdown("text/lq_plot.md"), offset = 1)
+            # column(width = 11, h3("test header"), offset = 1)
+          )
+          
           ),
         
         #TAB 3 SIC VS SOC EVERYWHERE COMPARISON
